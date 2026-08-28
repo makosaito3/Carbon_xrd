@@ -1,0 +1,299 @@
+openapi: 3.0.0
+info:
+  title: Carbon XRD Structure Analysis API
+  description: Generate XRD and total scattering patterns from carbon material structures
+  version: 1.0.0
+  contact:
+    name: Carbon XRD Team
+    url: https://github.com/makosaito3/Carbon_xrd
+
+servers:
+  - url: http://localhost:5000
+    description: Local development server
+  - url: https://carbon-xrd-api.example.com
+    description: Production server (when deployed)
+
+paths:
+  /api/v1/generate-pattern:
+    post:
+      operationId: generateXRDPattern
+      summary: Generate XRD and total scattering patterns
+      description: |
+        Generate XRD diffraction pattern, total scattering S(Q), and optionally pair distribution G(r) from a carbon material structure.
+        
+        Input can be either:
+        - A structure template name: 'graphene' or 'graphite'
+        - A full CIF file content (crystallographic information)
+      tags:
+        - Patterns
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GeneratePatternRequest'
+            examples:
+              graphene:
+                summary: Generate graphene XRD
+                value:
+                  cif_content: "graphene"
+                  include_pdf: false
+                  peak_threshold: 1.0
+              graphite:
+                summary: Generate graphite XRD with PDF
+                value:
+                  cif_content: "graphite"
+                  include_pdf: true
+                  peak_threshold: 0.5
+      responses:
+        200:
+          description: Patterns generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GeneratePatternResponse'
+        400:
+          description: Invalid request (missing or malformed input)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Missing 'cif_content' field"
+        500:
+          description: Server error during pattern generation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Server error: Structure parsing failed"
+
+  /api/v1/structures:
+    get:
+      operationId: listStructures
+      summary: List available sample structures
+      description: Get a list of pre-defined carbon material structure templates that can be used without providing full CIF content
+      tags:
+        - Structures
+      responses:
+        200:
+          description: List of available structures
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StructuresListResponse'
+
+  /api/v1/info:
+    get:
+      operationId: getAPIInfo
+      summary: Get API information
+      description: Get details about the Carbon XRD API, including available endpoints and capabilities
+      tags:
+        - Info
+      responses:
+        200:
+          description: API information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIInfoResponse'
+
+  /health:
+    get:
+      operationId: healthCheck
+      summary: Health check
+      description: Check if the API server is running and healthy
+      tags:
+        - Health
+      responses:
+        200:
+          description: API is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+components:
+  schemas:
+    GeneratePatternRequest:
+      type: object
+      required:
+        - cif_content
+      properties:
+        cif_content:
+          type: string
+          description: |
+            Either a structure template name ('graphene', 'graphite') or full CIF crystallographic file content.
+            - Template names are quick and simple
+            - Full CIF allows custom structures with specific lattice parameters
+          example: "graphene"
+        include_pdf:
+          type: boolean
+          default: false
+          description: If true, also calculate and return the pair distribution function G(r)
+        peak_threshold:
+          type: number
+          default: 1.0
+          minimum: 0.01
+          maximum: 100
+          description: Relative intensity threshold (%) for peak detection in XRD pattern
+
+    GeneratePatternResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Whether pattern generation succeeded
+          example: true
+        structure_info:
+          type: object
+          properties:
+            formula:
+              type: string
+              example: "C2"
+            num_atoms:
+              type: integer
+              example: 2
+            volume:
+              type: number
+              description: Unit cell volume in cubic Angstroms
+              example: 51.98
+            density:
+              type: number
+              description: Material density in g/cm3
+              example: 0.762
+            lattice_params:
+              type: object
+              properties:
+                a:
+                  type: number
+                  example: 2.458
+                b:
+                  type: number
+                  example: 2.458
+                c:
+                  type: number
+                  example: 10.0
+                alpha:
+                  type: number
+                beta:
+                  type: number
+                gamma:
+                  type: number
+        xrd_plot:
+          type: string
+          format: byte
+          description: Base64-encoded PNG image of XRD pattern (2θ vs intensity)
+          example: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+        total_scattering_plot:
+          type: string
+          format: byte
+          description: Base64-encoded PNG image of S(Q) pattern
+          example: "data:image/png;base64,..."
+        pdf_plot:
+          type: string
+          format: byte
+          description: Base64-encoded PNG image of G(r) pair distribution (only if include_pdf=true)
+        peaks_data:
+          type: array
+          items:
+            type: object
+            properties:
+              "2theta_deg":
+                type: number
+                description: Scattering angle in degrees
+                example: 26.45
+              d_spacing_angstrom:
+                type: number
+                description: d-spacing from Bragg's law in Angstroms
+                example: 3.367
+              intensity_percent:
+                type: number
+                description: Relative peak intensity (0-100%)
+                example: 100.0
+          description: List of detected peaks in XRD pattern
+        num_peaks:
+          type: integer
+          description: Number of detected peaks
+          example: 5
+        message:
+          type: string
+          description: Summary message with interpretation
+          example: "Successfully generated patterns for C2 with 2 peaks detected."
+
+    StructuresListResponse:
+      type: object
+      properties:
+        structures:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                example: "graphene"
+              name:
+                type: string
+                example: "Graphene (Single Layer)"
+              description:
+                type: string
+                example: "Single-layer hexagonal carbon structure"
+              formula:
+                type: string
+                example: "C2"
+
+    APIInfoResponse:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "Carbon XRD API"
+        version:
+          type: string
+          example: "1.0.0"
+        description:
+          type: string
+          example: "RESTful API for XRD pattern generation from carbon structures"
+        endpoints:
+          type: array
+          items:
+            type: object
+            properties:
+              path:
+                type: string
+              method:
+                type: string
+              description:
+                type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message describing what went wrong
+          example: "Invalid CIF format: missing _atom_site_label"
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - ok
+            - error
+          example: "ok"
+        service:
+          type: string
+          example: "carbon-xrd-api"
+
+tags:
+  - name: Patterns
+    description: XRD and total scattering pattern generation
+  - name: Structures
+    description: Available sample structures
+  - name: Info
+    description: API information and capabilities
+  - name: Health
+    description: Health and status endpoints
