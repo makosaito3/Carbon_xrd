@@ -19,13 +19,46 @@ This tool helps carbon material researchers and developers visualize how structu
 - **Peak Extraction**: Identify and export peak information (2θ, d-spacing, intensity)
 - **Flexible Output**: PNG (300 dpi) + CSV format
 
+## 📖 Documentation
+
+**Start here depending on your needs:**
+
+| Document | Best for | Time |
+|----------|----------|------|
+| **[QUICKSTART.md](QUICKSTART.md)** | 🚀 Get running in 5 minutes | 5 min |
+| **[PRODUCTION_GUIDE.md](PRODUCTION_GUIDE.md)** | 📋 Complete operations manual | 15 min |
+| **[GETTING_STARTED.md](GETTING_STARTED.md)** | 📚 Full detailed guide with examples | 30 min |
+| **[DESIGN.md](copilot_agent/DESIGN.md)** | 🔧 Architecture & technical details | 20 min |
+
+**Quick links:**
+- [3 usage methods (CLI / API / Copilot Agent)](#usage)
+- [Installation steps](#installation)
+- [Troubleshooting](#troubleshooting)
+
+---
+
 ## Installation
 
 ### Requirements
-- Python 3.10+
+- Python 3.9+
 - Dependencies: pymatgen, matplotlib, pandas, numpy, scipy
 
-### Setup
+### Quick Setup
+
+**Windows:**
+```powershell
+cd Carbon_xrd
+setup.bat
+```
+
+**macOS/Linux:**
+```bash
+cd Carbon_xrd
+chmod +x setup.sh
+./setup.sh
+```
+
+### Manual Setup
 
 ```bash
 # Clone the repository
@@ -33,17 +66,68 @@ git clone https://github.com/makosaito3/Carbon_xrd.git
 cd Carbon_xrd
 
 # Install dependencies
-python -m pip install -r requirements.txt
+pip install -r requirements.txt
+
+# Verify installation
+python -m pytest tests/test_carbon_xrd.py
 ```
 
-Note: On Windows, set UTF-8 encoding for console output:
+**Note:** On Windows, set UTF-8 encoding:
 ```powershell
 $env:PYTHONIOENCODING = "utf-8"
 ```
 
+⚠️ **First time?** → See [QUICKSTART.md](QUICKSTART.md) for step-by-step guide
+
 ## Usage
 
-### Basic Command
+### 🎯 3 Ways to Use This Tool
+
+#### Method 1: CLI (Command Line) - Simplest
+
+```bash
+export PYTHONPATH="${PWD}/src"  # macOS/Linux
+# or
+$env:PYTHONPATH = "$PWD\src"   # Windows PowerShell
+
+python -m carbon_xrd.cli generate-pattern --cif structure.cif --output results/
+```
+
+**Best for:** Standalone execution, batch processing
+
+---
+
+#### Method 2: REST API Server - Most Flexible
+
+```bash
+# Start server
+python -m carbon_xrd.api_server
+
+# Call API (in another terminal)
+curl -X POST http://localhost:5000/api/v1/generate-pattern \
+  -H "Content-Type: application/json" \
+  -d '{"cif_content": "graphene", "include_pdf": false}'
+```
+
+**Best for:** Web apps, multi-user access, network sharing
+
+---
+
+#### Method 3: M365 Copilot Agent - Most Intuitive
+
+```bash
+# Deploy to M365 Copilot
+atk provision --env local
+
+# Then open Copilot Chat and type:
+# "Generate XRD pattern for graphene"
+```
+
+**Best for:** Non-technical users, natural language queries
+
+---
+
+### Basic Command (CLI)
 
 ```bash
 python -m carbon_xrd.cli generate-pattern --cif <path/to/structure.cif> --output <output_dir>
